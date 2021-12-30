@@ -1,0 +1,124 @@
+---
+title: 'Shiny Dashboard: Beach Safety'
+author: "Eddie Chong"
+date: "11/17/2021"
+output: html_document
+---
+
+## Libraries
+
+```{r}
+library(shiny)
+library(tidyverse)
+library(broom)
+library(purrr)
+library(shinythemes)
+
+```
+
+```{r, echo=FALSE}
+beach_data <- read.csv("Beach_Lab_Data.csv") #data available from the chicago data portal
+```
+
+
+```{r}
+beach_data1 <- beach_data %>%
+  select("DNA.Sample.Timestamp", "Beach", "DNA.Reading.Mean") %>%
+  mutate(date1 = as.Date(beach_data$DNA.Sample.Timestamp, 
+                         format =  "%m/%d/%Y")) %>%
+  mutate(Danger = ifelse(beach_data$DNA.Reading.Mean>=1000, 
+               "1", "0")) %>% #dummy variable to indicate a closed beach
+  mutate(danger1 = as.numeric(Danger)) %>%
+  na.omit(beach_data$DNA.Reading.Mean) %>% #there will be a large amount of data missing due to errors in data collection where the incorrect measure was taken in lieu of the actual DNA reading
+  na.omit(beach_data$Beach)
+```
+
+
+```{r}
+ui <- fluidPage( theme = shinytheme("journal"),
+      titlePanel("Chicago Beach E. coli Tracker"),
+      sidebarLayout(
+        sidebarPanel(
+          helpText("The graph on the right will illustrate how much E. coli was measured within the selected dates between May 2016-August 2021. Any point above the red line will indicate if the beach had an unsafe level of E. coli (1000 CCE). This app is not meant to forecast which days of the year will be unsafe, please check the daily beach advisory during the summer for the latest information."),
+            selectInput("Beach",
+                 label = "Beach:", 
+                 choices = c("Calumet", "Montrose",
+                              "63rd Street", "Rainbow",
+                              "South Shore", "Ohio Street",
+                              "12th Street","57th Street",
+                              "North Avenue", "Osterman",
+                              "Foster", "Oak Street",
+                              "Howard", "Rogers",
+                              "Leone", "Oakwood",
+                              "Margaret T Burroughs",
+                              "Hartigan", "Juneway",
+                              "Marion Mahony Griffin",
+                              "Margaret T Burroughs",                                                 "Montrose Dog",
+                              "Hartigan (Albion)",
+                              "Marion Mahony Griffin",
+                              "Humboldt", "North Shore",
+                              "Lane", "Columbia",
+                              "Loyola", "Fargo"), 
+                       selected = "12th Street"),
+          
+    dateRangeInput("date1", 
+        label = "Date Range",
+        start = "2021-07-01",
+        end = "2021-08-01",
+        min = "2016-06-01",
+        max = "2021-09-01",
+        format = "mm/dd/yy"),
+    ),
+    
+    mainPanel(
+      tabsetPanel
+      (type = "tabs",
+            tabPanel("Graph", plotOutput("plot")),
+            tabPanel("Table", tableOutput("table2"),textOutput("text")))
+        )
+     )
+  )
+
+```
+
+```{r}
+server <- function(input, output, session) {
+    beachInput <- reactive({
+      beach_data1 %>% 
+      filter(Beach == input$"Beach") %>%
+      filter(date1 >= input$date1[1] & date1 <= input$date1[2])
+    })
+   
+  output$table2 <- renderTable({
+    df_beach2 <- beachInput() %>%
+    group_by(Beach, danger1) %>%
+    summarise(days_unsafe = n()) %>%
+    mutate(percent = round(days_unsafe / sum(days_unsafe), 3)) %>% 
+    filter(danger1 == "1") %>%
+    arrange(desc(percent)) %>%
+    select(!danger1)
+  })
+   
+   output$plot <- renderPlot({
+      beachplot <- beachInput()
+      ggplot(beachplot, aes(x = date1, y=DNA.Reading.Mean)) + 
+      geom_line() +
+      geom_hline(yintercept = 1000, color= "red", size = 1.5) +
+      labs(title = "E. coli Measures from Selected Beach and Timeframe",
+           subtitle = "Points above red line indicate beach closure.",
+           caption = "Source: Chicago Data Portal",
+           x = "Date",
+           y = "Level of E. coli (CCE)")
+  })
+  
+     output$text <- renderText({"If you plan on visiting a beach, please check the Chicago Parks District Beach Advisory for the latest report. For more information on how to address rates of bacteria on your beach, visit your local environmental organization or contact the alderman for your ward."})
+}
+
+```
+
+```{r}
+shinyApp(ui, server)
+```
+
+
+
