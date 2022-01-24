@@ -22,6 +22,7 @@ beach_data <- read.csv("Beach_Lab_Data.csv") #data available from the chicago da
 
 
 ```{r}
+#Data Processing
 beach_data1 <- beach_data %>%
   select("DNA.Sample.Timestamp", "Beach", "DNA.Reading.Mean") %>%
   mutate(date1 = as.Date(beach_data$DNA.Sample.Timestamp, 
@@ -35,6 +36,7 @@ beach_data1 <- beach_data %>%
 
 
 ```{r}
+#Shiny UI
 ui <- fluidPage( theme = shinytheme("journal"),
       titlePanel("Chicago Beach E. coli Tracker"),
       sidebarLayout(
@@ -53,7 +55,8 @@ ui <- fluidPage( theme = shinytheme("journal"),
                               "Margaret T Burroughs",
                               "Hartigan", "Juneway",
                               "Marion Mahony Griffin",
-                              "Margaret T Burroughs",                                                 "Montrose Dog",
+                              "Margaret T Burroughs",                                                 
+                              "Montrose Dog",
                               "Hartigan (Albion)",
                               "Marion Mahony Griffin",
                               "Humboldt", "North Shore",
